@@ -38,7 +38,7 @@ init_sockaddr_inet6(struct sockaddr_in6 *addr)
 int
 main(int argc, char *argv[])
 {
-    int socket_fd, ret, total_size = 0, af;
+    int socket_fd, ret, af;
     //char buffer[1024] = { 0 };
     char ip_string[64] = { 0 };
     socklen_t len;
@@ -89,9 +89,10 @@ main(int argc, char *argv[])
     printf("[Client] Local address is: %s\n", ip_string);
 
     printf("[Client] Client write\n");
-    char buffer[1] = {0};
+    char buffer[20];
+    sprintf(buffer, "%d", 123);
     int rbuffer[BATCH_SIZE];
-    if(write(socket_fd, buffer, 1) < 0){
+    if(write(socket_fd, buffer, 4) < 0){
         perror("Write error");
     }
 

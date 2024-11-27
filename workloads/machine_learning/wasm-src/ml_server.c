@@ -163,7 +163,7 @@ void mnist_free_dataset(mnist_dataset_t * dataset)
  */
 int mnist_batch(mnist_dataset_t * dataset, mnist_dataset_t * batch, int size, int number)
 {
-    int start_offset;
+    unsigned int start_offset;
 
     start_offset = size * number;
 
@@ -255,7 +255,7 @@ void neural_network_hypothesis(mnist_image_t * image, neural_network_t * network
  */
 void neural_network_inference(mnist_dataset_t * dataset, neural_network_t * network, int predictions[])
 {
-    int i, j, predict;
+    unsigned int i, j, predict;
     float activations[MNIST_LABELS], max_activation;
 
 
@@ -291,7 +291,6 @@ struct args {
 void *
 run(void *arg)
 {
-    const char *message = "Say Hi from the Server\n";
     int new_socket = ((struct args *) arg)->socket;
     mnist_dataset_t * dataset = ((struct args *) arg)->dataset;
     neural_network_t * network = ((struct args *) arg)->network;
@@ -299,17 +298,17 @@ run(void *arg)
     free(arg);
 
     int batch_num;
-    char *buffer = (char *)&batch_num;
+    char buffer[20];
     int bytes_read;
 
     printf("[Server] Communicate with the new connection #%u @ %p ..\n",
            new_socket, (void *)(uintptr_t)pthread_self());
     fflush(stdout);
 
-    bytes_read = read(new_socket, buffer, 4);
-    if (bytes_read > 0){
-        buffer[bytes_read] = '\0';
-        batch_num = ntohl(batch_num) % n_batches;
+    bytes_read = read(new_socket, buffer, sizeof(buffer));
+    while (bytes_read > 0){
+        batch_num = atoi(buffer);
+        batch_num %= n_batches;
         mnist_dataset_t batch;
 
         //// Initialise batch
@@ -319,25 +318,30 @@ run(void *arg)
         int predictions[BATCH_SIZE];
         neural_network_inference(&batch, network, predictions);
 
-        if(write(new_socket, predictions, BATCH_SIZE * 4) < 0){
+        if(write(new_socket, predictions, sizeof(predictions)) < 0){
             perror("Write error");
         }
         else{
-            printf("Buffer sent:");
+            printf("Buffer sent (%d):", batch_num);
             for(int i = 0; i < BATCH_SIZE; ++i){
                 printf("%d ", predictions[i]);
             }
             printf("\n");
+            fflush(stdout);
         }
+        bytes_read = read(new_socket, buffer, 4);
     }
-    else if (bytes_read == 0) {
+    
+    if (bytes_read == 0) {
         printf("Client disconnected.\n");
+        fflush(stdout);
     } 
     else {
         perror("Read error");
     }
 
-    printf("[Server] Shuting down the new connection #%u ..\n", new_socket);
+    printf("[Server] Shutting down the new connection #%u ..\n", new_socket);
+    fflush(stdout);
     shutdown(new_socket, SHUT_RDWR);
 
     return NULL;
@@ -384,7 +388,6 @@ main(int argc, char *argv[])
 
     int socket_fd = -1, addrlen = 0, af;
     struct sockaddr_storage addr = { 0 };
-    unsigned connections = 0;
     char ip_string[64];
 
     if (argc > 1 && strcmp(argv[1], "inet6") == 0) {
@@ -399,19 +402,29 @@ main(int argc, char *argv[])
     }
 
     printf("[Server] Create socket\n");
+    fflush(stdout);
     socket_fd = socket(af, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         perror("Create socket failed");
         goto fail;
     }
 
+    int optval = 1;
+    socklen_t optlen = sizeof(optval);
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_REUSEADDR, &optval, optlen) < 0) {
+        perror("Error setting socket options");
+        goto fail;
+    }
+
     printf("[Server] Bind socket\n");
+    fflush(stdout);
     if (bind(socket_fd, (struct sockaddr *)&addr, addrlen) < 0) {
         perror("Bind failed");
         goto fail;
     }
 
     printf("[Server] Listening on socket\n");
+    fflush(stdout);
     if (listen(socket_fd, 128) < 0) {
         perror("Listen failed");
         goto fail;
@@ -420,6 +433,7 @@ main(int argc, char *argv[])
     int client_socket;
     struct args *arguments;
     printf("[Server] Wait for clients to connect ..\n");
+    fflush(stdout);
     while (true) {
         addrlen = sizeof(struct sockaddr);
         client_socket =
@@ -433,6 +447,7 @@ main(int argc, char *argv[])
                                sizeof(ip_string) / sizeof(ip_string[0]))
             != 0) {
             printf("[Server] failed to parse client address\n");
+            fflush(stdout);
             goto fail;
         }
 
@@ -443,6 +458,7 @@ main(int argc, char *argv[])
         arguments->n_batches = batches;
         pthread_t thread_id;
         printf("[Server] Client connected (%s)\n", ip_string);
+        fflush(stdout);
         if (pthread_create(&thread_id, NULL, run,
                            arguments)) {
             perror("Create a worker thread failed");
@@ -457,10 +473,12 @@ main(int argc, char *argv[])
     mnist_free_dataset(test_dataset);
     free(network);
 
-    printf("[Server] Shuting down ..\n");
+    printf("[Server] Shutting down ..\n");
+    fflush(stdout);
     shutdown(socket_fd, SHUT_RDWR);
     sleep(3);
     printf("[Server] BYE \n");
+    fflush(stdout);
     return EXIT_SUCCESS;
 
 fail:
@@ -468,7 +486,8 @@ fail:
     mnist_free_dataset(test_dataset);
     free(network);
 
-    printf("[Server] Shuting down ..\n");
+    printf("[Server] Shutting down ..\n");
+    fflush(stdout);
     if (socket_fd >= 0)
         close(socket_fd);
     sleep(3);

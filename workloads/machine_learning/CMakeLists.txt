@@ -187,3 +187,17 @@ add_executable (iwasm ${RUNTIME_SOURCE_ALL})
 check_pie_supported()
 set_target_properties (iwasm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(iwasm vmlib -lpthread -lm -ldl)
+
+
+# Copy data to build folder
+# Define the folder to copy and the destination
+set(SRC_DATA_FOLDER ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/data) # Replace 'some_folder' with your actual folder name
+set(DEST_DATA_FOLDER ${CMAKE_BINARY_DIR}/data)
+
+# Add a custom command to copy the folder
+add_custom_command(
+  TARGET iwasm
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_directory ${SRC_DATA_FOLDER} ${DEST_DATA_FOLDER}
+  COMMENT "Copying folder from ${SRC_DATA_FOLDER} to ${SRC_DATA_FOLDER}"
+)
