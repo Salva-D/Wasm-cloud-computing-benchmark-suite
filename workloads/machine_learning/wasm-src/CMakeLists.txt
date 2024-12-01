@@ -78,6 +78,7 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
     LINKER:--export=__data_end
     LINKER:--export=malloc
     LINKER:--export=free
+    LINKER:-z,stack-size=262144
     LINKER:--shared-memory,--max-memory=10485760
     LINKER:--no-check-features
     LINKER:--allow-undefined

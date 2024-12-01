@@ -16,13 +16,13 @@ async def client_da():
     ...
 
 async def client_ml(id, start_time, host, port, warmup_d, measurement_d):
+    request_logs = []
     try:
         # Connect to the server
         reader, writer = await asyncio.open_connection(host, port)
 
         print(f"Client {id} connected to {host}:{port}")
-
-        request_logs = []
+    
         # Keep sending requests until measurement_d expires
         while asyncio.get_running_loop().time() - start_time < measurement_d:
             # Send a message
