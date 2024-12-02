@@ -58,7 +58,7 @@ async def client_ml(id, start_time, host, port, warmup_d, measurement_d, debug=F
 
     return request_logs, error
 
-def get_client(workload):
+def get_client_method(workload):
     if workload == 'rdb':
         return client_rdb
     elif workload == 'nosql':

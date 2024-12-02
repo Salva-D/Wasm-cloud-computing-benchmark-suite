@@ -2,22 +2,22 @@ import argparse
 import asyncio
 import os
 import pickle
-import time
-from clients import get_client
+from clients import get_client_method
 from heapq import merge
+from main import WORKLOADS
 
 WARMUP_PROP = 0.2
 
 
-async def bench(workload, duration, connections, host, port):
+async def bench(workload, duration, connections, host, port, debug=False):
     # Set warmup time
     warmup_d = WARMUP_PROP * duration
 
     # Choose adequate client method for benchmark
-    client_method = get_client(workload)
+    client_method = get_client_method(workload)
 
     # Select name of output file
-    output_file = f"{workload}_d{duration}_c{connections}_{time.time_ns()}"
+    output_file = f"{workload}_d{duration}_c{connections}"
 
     # Run benchmark
     tasks = [None] * connections
@@ -30,7 +30,8 @@ async def bench(workload, duration, connections, host, port):
                 host, 
                 port, 
                 warmup_d, 
-                duration
+                warmup_d + duration,
+                debug=debug
             ))
     
     results = list(merge([task.result()[0] for task in tasks]))
@@ -81,12 +82,13 @@ if __name__ == "__main__":
     )
 
     # Workload
+    workloads = [w[0] for w in WORKLOADS]
     parser.add_argument(
         '-w', '--workload', 
         type=str, 
-        choices = ['rdb', 'nosql', 'ws', 'da', 'ml'],
+        choices = workloads,
         required=True, 
-        help=f"Identifier of the workload to be benchmarked. Must be one of the following [rdb, nosql, ws, da, ml].",
+        help=f"Identifier of the workload to be benchmarked. Must be one of the following [" + ", ".join(workloads) + "]",
         dest="workload"
     )
 
@@ -107,4 +109,4 @@ if __name__ == "__main__":
     port = aux[-1]
 
     # Run benchmark
-    asyncio.run(bench(args.workload, args.duration, args.connections, host, port))
+    asyncio.run(bench(args.workload, args.duration, args.connections, host, port, args.debug))

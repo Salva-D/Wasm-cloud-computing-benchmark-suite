@@ -12,6 +12,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -281,6 +282,8 @@ void neural_network_inference(mnist_dataset_t * dataset, neural_network_t * netw
     //    SERVER    //
     //////////////////
 
+DEBUG = false;
+
 struct args {
     int socket;
     mnist_dataset_t * dataset;
@@ -301,9 +304,11 @@ run(void *arg)
     char buffer[20];
     int bytes_read;
 
-    printf("[Server] Communicate with the new connection #%u @ %p ..\n",
-           new_socket, (void *)(uintptr_t)pthread_self());
-    fflush(stdout);
+    if(DEBUG){
+        printf("[Server] Communicate with the new connection #%u @ %p ..\n",
+                new_socket, (void *)(uintptr_t)pthread_self());
+        fflush(stdout);
+    }
 
     bytes_read = read(new_socket, buffer, sizeof(buffer));
     while (bytes_read > 0){
@@ -321,7 +326,7 @@ run(void *arg)
         if(write(new_socket, predictions, sizeof(predictions)) < 0){
             perror("Write error");
         }
-        else{
+        else if(DEBUG){
             printf("Buffer sent (%d):", batch_num);
             for(int i = 0; i < BATCH_SIZE; ++i){
                 printf("%d ", predictions[i]);
@@ -332,16 +337,17 @@ run(void *arg)
         bytes_read = read(new_socket, buffer, 4);
     }
     
-    if (bytes_read == 0) {
+    if (bytes_read != 0) {
+        perror("Read error");
+    else if(DEBUG){
         printf("Client disconnected.\n");
         fflush(stdout);
-    } 
-    else {
-        perror("Read error");
     }
 
-    printf("[Server] Shutting down the new connection #%u ..\n", new_socket);
-    fflush(stdout);
+    if(DEBUG){
+        printf("[Server] Shutting down the new connection #%u ..\n", new_socket);
+        fflush(stdout);
+    }
     shutdown(new_socket, SHUT_RDWR);
     if (new_socket >= 0)
         close(new_socket);
@@ -367,9 +373,16 @@ init_sockaddr_inet6(struct sockaddr_in6 *addr)
     addr->sin6_addr = in6addr_any;
 }
 
+void handle_sigterm(int signum) {
+    printf("SIGTERM received. Shutting down...\n");
+    fflush(stdout);
+}
+
 int
 main(int argc, char *argv[])
 {
+    signal(SIGTERM, handle_sigterm);
+
     //LOAD DATA AND MODEL
     mnist_dataset_t * test_dataset;
     neural_network_t * network = malloc(sizeof(neural_network_t));
@@ -403,8 +416,10 @@ main(int argc, char *argv[])
         init_sockaddr_inet((struct sockaddr_in *)&addr);
     }
 
-    printf("[Server] Create socket\n");
-    fflush(stdout);
+    if(DEBUG){
+        printf("[Server] Create socket\n");
+        fflush(stdout);
+    }
     socket_fd = socket(af, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         perror("Create socket failed");
@@ -418,15 +433,19 @@ main(int argc, char *argv[])
         goto fail;
     }
 
-    printf("[Server] Bind socket\n");
-    fflush(stdout);
+    if(DEBUG){
+        printf("[Server] Bind socket\n");
+        fflush(stdout);
+    }
     if (bind(socket_fd, (struct sockaddr *)&addr, addrlen) < 0) {
         perror("Bind failed");
         goto fail;
     }
 
-    printf("[Server] Listening on socket\n");
-    fflush(stdout);
+    if(DEBUG){
+        printf("[Server] Listening on socket\n");
+        fflush(stdout);
+    }
     if (listen(socket_fd, 128) < 0) {
         perror("Listen failed");
         goto fail;
@@ -434,14 +453,20 @@ main(int argc, char *argv[])
 
     int client_socket;
     struct args *arguments;
-    printf("[Server] Wait for clients to connect ..\n");
-    fflush(stdout);
+    if(DEBUG){
+        printf("[Server] Wait for clients to connect ..\n");
+        fflush(stdout);
+    }
     while (true) {
         addrlen = sizeof(struct sockaddr);
         client_socket =
             accept(socket_fd, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
         if (client_socket < 0) {
             perror("Accept failed");
+            if (errno == EINTR){
+                printf("SIGTERM received. Closing correctly.\n");
+                fflush(stdout);
+            }
             break;
         }
 
@@ -459,8 +484,10 @@ main(int argc, char *argv[])
         arguments->network = network;
         arguments->n_batches = batches;
         pthread_t thread_id;
-        printf("[Server] Client connected (%s)\n", ip_string);
-        fflush(stdout);
+        if(DEBUG){
+            printf("[Server] Client connected (%s)\n", ip_string);
+            fflush(stdout);
+        }
         if (pthread_create(&thread_id, NULL, run,
                            arguments)) {
             perror("Create a worker thread failed");
