@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import clients
+import os
 import pickle
 import time
 from heapq import merge
@@ -32,7 +33,7 @@ async def main():
 
     # Duration
     parser.add_argument(
-        '-d', '--duration', 
+        '-D', '--duration', 
         type=int, 
         required=True, 
         help=f"Duration of the benchmark's measurement phase in seconds. A warmup phase will precede it, lasting {round(WARMUP_PROP * 100, 2)}% of the measurement phase duration.",
@@ -47,6 +48,14 @@ async def main():
         required=True, 
         help=f"Identifier of the workload to be benchmarked. Must be one of the following [rdb, nosql, ws, da, ml].",
         dest="workload"
+    )
+
+    # Debug
+    parser.add_argument(
+        '-d', '--debug', 
+        action='store_true',
+        help="Messages will be printed on screen if this flag is set.",
+        dest="debug"
     )
 
     args = parser.parse_args()
@@ -85,12 +94,21 @@ async def main():
                 args.duration
             ))
     
-    results = list(merge([task.result() for task in tasks]))
+
+    results = list(merge([task.result()[0] for task in tasks]))
+    error = any([task.result()[1] for task in tasks])
 
     # Store results
-    file = open(f"../../results/{output_file}.pkl", 'wb')
+    filepath = os.path.join(
+        os.path.realpath(os.path.dirname(os.path.dirname(__file__))), 
+        "results", 
+        f"{output_file}.pkl"
+    )
+    file = open(filepath, 'wb')
     pickle.dump(results, file)
     file.close()
+
+    return error
 
 if __name__ == "__main__":
     asyncio.run(main())
