@@ -1,15 +1,55 @@
 import argparse
 import asyncio
-import clients
 import os
 import pickle
 import time
+from clients import get_client
 from heapq import merge
 
 WARMUP_PROP = 0.2
 
 
-async def main():
+async def bench(workload, duration, connections, host, port):
+    # Set warmup time
+    warmup_d = WARMUP_PROP * duration
+
+    # Choose adequate client method for benchmark
+    client_method = get_client(workload)
+
+    # Select name of output file
+    output_file = f"{workload}_d{duration}_c{connections}_{time.time_ns()}"
+
+    # Run benchmark
+    tasks = [None] * connections
+    async with asyncio.TaskGroup() as tg:
+        start_time = asyncio.get_running_loop().time()
+        for i in range(connections):
+            tasks[i] = tg.create_task(client_method(
+                i, 
+                start_time, 
+                host, 
+                port, 
+                warmup_d, 
+                duration
+            ))
+    
+    results = list(merge([task.result()[0] for task in tasks]))
+    error = any([task.result()[1] for task in tasks])
+
+    # Store results
+    filepath = os.path.join(
+        os.path.realpath(os.path.dirname(os.path.dirname(__file__))), 
+        "results", 
+        f"{output_file}.pkl"
+    )
+    file = open(filepath, 'wb')
+    pickle.dump(results, file)
+    file.close()
+
+    return error
+
+
+if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
 
@@ -59,56 +99,12 @@ async def main():
     )
 
     args = parser.parse_args()
-    warmup_d = WARMUP_PROP * args.duration
+    
     aux = args.host.split(':')
     host = ""
     for x in aux[:-1]:
         host += x
     port = aux[-1]
 
-    # Choose adequate client method for benchmark
-    if args.workload == 'rdb':
-        client_method = clients.client_rdb
-    elif args.workload == 'nosql':
-        client_method = clients.client_nosql
-    elif args.workload == 'ws':
-        client_method = clients.client_ws
-    elif args.workload == 'da':
-        client_method = clients.client_da
-    elif args.workload == 'ml':
-        client_method = clients.client_ml
-
-    output_file = f"{args.workload}_d{args.duration}_c{args.connections}_{time.time_ns()}"
-
     # Run benchmark
-    tasks = [None] * args.connections
-    async with asyncio.TaskGroup() as tg:
-        start_time = asyncio.get_running_loop().time()
-        for i in range(args.connections):
-            tasks[i] = tg.create_task(client_method(
-                i, 
-                start_time, 
-                host, 
-                port, 
-                warmup_d, 
-                args.duration
-            ))
-    
-
-    results = list(merge([task.result()[0] for task in tasks]))
-    error = any([task.result()[1] for task in tasks])
-
-    # Store results
-    filepath = os.path.join(
-        os.path.realpath(os.path.dirname(os.path.dirname(__file__))), 
-        "results", 
-        f"{output_file}.pkl"
-    )
-    file = open(filepath, 'wb')
-    pickle.dump(results, file)
-    file.close()
-
-    return error
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(bench(args.workload, args.duration, args.connections, host, port))

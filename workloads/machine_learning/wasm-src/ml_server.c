@@ -343,6 +343,8 @@ run(void *arg)
     printf("[Server] Shutting down the new connection #%u ..\n", new_socket);
     fflush(stdout);
     shutdown(new_socket, SHUT_RDWR);
+    if (new_socket >= 0)
+        close(new_socket);
 
     return NULL;
 }
@@ -464,6 +466,8 @@ main(int argc, char *argv[])
             perror("Create a worker thread failed");
             free(arguments);
             shutdown(client_socket, SHUT_RDWR);
+            if (client_socket >= 0)
+                close(client_socket);
             break;
         }
         pthread_detach(thread_id);
@@ -476,6 +480,8 @@ main(int argc, char *argv[])
     printf("[Server] Shutting down ..\n");
     fflush(stdout);
     shutdown(socket_fd, SHUT_RDWR);
+    if (socket_fd >= 0)
+        close(socket_fd);
     sleep(3);
     printf("[Server] BYE \n");
     fflush(stdout);

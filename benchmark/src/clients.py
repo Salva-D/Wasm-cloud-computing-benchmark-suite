@@ -57,3 +57,15 @@ async def client_ml(id, start_time, host, port, warmup_d, measurement_d, debug=F
             print(f"Client {id} encountered an error: {e}")
 
     return request_logs, error
+
+def get_client(workload):
+    if workload == 'rdb':
+        return client_rdb
+    elif workload == 'nosql':
+        return client_nosql
+    elif workload == 'ws':
+        return client_ws
+    elif workload == 'da':
+        return client_da
+    elif workload == 'ml':
+        return client_ml
