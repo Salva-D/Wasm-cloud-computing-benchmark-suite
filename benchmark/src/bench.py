@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import main
+import os
 import pickle
 from clients import get_client_method
 from heapq import merge
@@ -33,7 +34,7 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
             ))
     
     results = list(merge(*[task.result()[0] for task in tasks]))
-    m = min(p[0] for p in results)
+    m = min([p[0] for p in results] + [float('inf')])
     results = [(t-m, l) for (t, l) in results]
     error = any([task.result()[1] for task in tasks])
 
@@ -41,8 +42,10 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
     output_file = f"{workload}_{'wasm' if wasm else 'native'}_d{duration}_c{connections}"
 
     # Store results
-    filepath = Path(__file__).parents[1] / "results" /f"{output_file}.pkl"
-    file = open(filepath, 'wb')
+    folder = Path(__file__).parents[1] / "results" / main.WORKLOADS[workload]
+    folder.mkdir(exist_ok=True)
+    os.chmod(folder, 0o777)
+    file = open(folder / f"{output_file}.pkl", 'wb')
     pickle.dump(results, file)
     file.close()
 
@@ -58,7 +61,7 @@ if __name__ == "__main__":
         '-H', '--host', 
         type=str, 
         required=True, 
-        help="Host to benchmark e.g. \'-h http://127.0.0.1:5050\'.",
+        help="Host to benchmark e.g. \'-H http://127.0.0.1:5050\'.",
         dest="host"
     )
 

@@ -112,14 +112,11 @@ ExternalProject_Add(wasm-app
                       ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src
   BUILD_COMMAND     ${CMAKE_COMMAND} --build .
   INSTALL_COMMAND   ${CMAKE_COMMAND} -E copy
-                      tcp_client_mod.wasm ${CMAKE_BINARY_DIR}
-                      ml_server.wasm ${CMAKE_BINARY_DIR}
+                      machine_learning.wasm ${CMAKE_BINARY_DIR}
 )
 
-add_executable(ml_server ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/ml_server.c)
-target_link_libraries(ml_server pthread m)
-
-add_executable(tcp_client_mod ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/tcp_client_mod.c)
+add_executable(machine_learning ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/machine_learning.c)
+target_link_libraries(machine_learning pthread m)
 
 
 ############################################

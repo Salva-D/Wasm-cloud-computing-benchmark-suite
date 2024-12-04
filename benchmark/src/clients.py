@@ -29,9 +29,13 @@ async def client_ml(id, start_time, host, port, warmup_d, total_d, debug=False):
         while asyncio.get_running_loop().time() - start_time < total_d:
             # Send a message
             message = str(random.randint(0, 9999))
-            writer.write(message.encode())
-            await writer.drain()  # Ensure data is sent
+            
+            # Start measuring
             request_start_time = asyncio.get_running_loop().time()
+            writer.write(message.encode())
+
+            # Ensure data is sent
+            await writer.drain()  
 
             # Wait for a response
             response = await reader.read(100)  # Adjust buffer size if needed
@@ -41,8 +45,8 @@ async def client_ml(id, start_time, host, port, warmup_d, total_d, debug=False):
             if debug:
                 print(f"Client {id} received: {response}")
 
-            # Optional: add delay to mimic real-world traffic patterns
-            await asyncio.sleep(random.expovariate(1 / MEAN_DELAY))
+            # Delay to mimic real-world traffic patterns
+            await asyncio.sleep(min(random.expovariate(1 / MEAN_DELAY), 10))
 
         if debug:
             print(f"Client {id} finished after {asyncio.get_running_loop().time() - start_time} seconds")

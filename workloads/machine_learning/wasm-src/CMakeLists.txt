@@ -101,5 +101,4 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
   endif()
 endfunction()
 
-compile_with_clang(ml_server.c)
-compile_with_clang(tcp_client_mod.c)
+compile_with_clang(machine_learning.c)

@@ -23,6 +23,7 @@ def main(workloads, durations, host, port):
     # Gather workload executables
     native_exes = []
     wasm_exes = []
+    runtimes = []
     full_w_names = {WORKLOADS[w] for w in workloads}
     workloads_dir = Path(__file__).parents[2] / "workloads"
     for w_dir in workloads_dir.iterdir():
@@ -31,23 +32,26 @@ def main(workloads, durations, host, port):
             if w_dir_name in full_w_names:
                 nexe = w_dir / "build" / w_dir_name
                 wexe = w_dir / "build" / f"{w_dir_name}.wasm"
-                assert nexe.exists()
-                assert wexe.exists()
+                iwasm = w_dir / "build" / "iwasm"
+                assert nexe.exists(), f"Missing native binary for workload {w_dir_name}."
+                assert wexe.exists(), f"Missing wasm binary for workload {w_dir_name}."
+                assert iwasm.exists(), f"Missing runtime for workload {w_dir_name}."
                 native_exes.append(nexe)
                 wasm_exes.append(wexe)
+                runtimes.append(iwasm)
                 full_w_names.remove(w_dir_name)
     
-    assert len(full_w_names) > 0, f"Missing folders for the following workloads: [" + ", ".join(full_w_names) + "]" 
+    assert len(full_w_names) == 0, f"Missing folders for the following workloads: [" + ", ".join(full_w_names) + "]." 
 
     # Run benchmarks for varying loads
-    for w, d, nexe, wexe in zip(workloads, durations, native_exes, wasm_exes):
+    for w, d, nexe, wexe, runtime in zip(workloads, durations, native_exes, wasm_exes, runtimes):
         # Native
-        for connections in tqdm(range(100, 1100, 100), desc=w):
+        for connections in tqdm(range(100, 1100, 100), desc=WORKLOADS[w]):
             # Launch server
-            server_process = subprocess.Popen(nexe)
+            server_process = subprocess.Popen(args=nexe, cwd=nexe.parent)
             time.sleep(1)
             # Run benchmark
-            error = asyncio.run(bench.bench(w, d, connections, host, port))
+            error = asyncio.run(bench.bench(w, False, d, connections, host, port))
             time.sleep(0.1)
             # Terminate server
             if server_process != None:
@@ -58,10 +62,13 @@ def main(workloads, durations, host, port):
         # Wasm
         for connections in tqdm(range(100, 1100, 100), desc=WORKLOADS[w]+".wasm"):
             # Launch server
-            server_process = subprocess.Popen() # TODO
+            server_process = subprocess.Popen(
+                args=[runtime, "--dir=.", "--max-threads=1500", "--addr-pool=0.0.0.0/15", wexe], 
+                cwd=nexe.parent
+            )
             time.sleep(1)
             # Run benchmark
-            error = asyncio.run(bench.bench(w, d, connections, host, port))
+            error = asyncio.run(bench.bench(w, True, d, connections, host, port))
             time.sleep(0.1)
             # Terminate server
             if server_process != None:
@@ -92,7 +99,7 @@ if __name__ == "__main__":
         '-H', '--host', 
         type=str, 
         required=True, 
-        help="Host to benchmark e.g. \'-h http://127.0.0.1:5050\'.",
+        help="Host to benchmark e.g. \'-H http://127.0.0.1:5050\'.",
         dest="host"
     )
 
