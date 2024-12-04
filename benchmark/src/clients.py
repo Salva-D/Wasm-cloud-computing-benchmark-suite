@@ -3,19 +3,19 @@ import random
 
 MEAN_DELAY = 1.0
 
-async def client_rdb(id, start_time, host, port, warmup_d, measurement_d, debug=False):
+async def client_rdb(id, start_time, host, port, warmup_d, total_d, debug=False):
     ...
 
-async def client_nosql(id, start_time, host, port, warmup_d, measurement_d, debug=False):
+async def client_nosql(id, start_time, host, port, warmup_d, total_d, debug=False):
     ...
 
-async def client_ws(id, start_time, host, port, warmup_d, measurement_d, debug=False):
+async def client_ws(id, start_time, host, port, warmup_d, total_d, debug=False):
     ...
 
-async def client_da(id, start_time, host, port, warmup_d, measurement_d, debug=False):
+async def client_da(id, start_time, host, port, warmup_d, total_d, debug=False):
     ...
 
-async def client_ml(id, start_time, host, port, warmup_d, measurement_d, debug=False):
+async def client_ml(id, start_time, host, port, warmup_d, total_d, debug=False):
     request_logs = []
     error = False
     try:
@@ -25,8 +25,8 @@ async def client_ml(id, start_time, host, port, warmup_d, measurement_d, debug=F
         if debug:
             print(f"Client {id} connected to {host}:{port}")
     
-        # Keep sending requests until measurement_d expires
-        while asyncio.get_running_loop().time() - start_time < measurement_d:
+        # Keep sending requests until total_d expires
+        while asyncio.get_running_loop().time() - start_time < total_d:
             # Send a message
             message = str(random.randint(0, 9999))
             writer.write(message.encode())
@@ -36,7 +36,7 @@ async def client_ml(id, start_time, host, port, warmup_d, measurement_d, debug=F
             # Wait for a response
             response = await reader.read(100)  # Adjust buffer size if needed
             request_duration = asyncio.get_running_loop().time() - request_start_time
-            if asyncio.get_running_loop().time() - start_time - request_duration < warmup_d:
+            if asyncio.get_running_loop().time() - start_time - request_duration >= warmup_d:
                 request_logs.append((request_start_time, request_duration))
             if debug:
                 print(f"Client {id} received: {response}")
@@ -45,7 +45,7 @@ async def client_ml(id, start_time, host, port, warmup_d, measurement_d, debug=F
             await asyncio.sleep(random.expovariate(1 / MEAN_DELAY))
 
         if debug:
-            print(f"Client {id} finished after {measurement_d} seconds")
+            print(f"Client {id} finished after {asyncio.get_running_loop().time() - start_time} seconds")
 
         # Close the connection
         writer.close()

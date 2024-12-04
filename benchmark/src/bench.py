@@ -1,23 +1,21 @@
 import argparse
 import asyncio
-import os
+import main
 import pickle
 from clients import get_client_method
 from heapq import merge
-from main import WORKLOADS
+from pathlib import Path
+
 
 WARMUP_PROP = 0.2
 
 
-async def bench(workload, duration, connections, host, port, debug=False):
+async def bench(workload, wasm, duration, connections, host, port, debug=False):
     # Set warmup time
     warmup_d = WARMUP_PROP * duration
 
     # Choose adequate client method for benchmark
     client_method = get_client_method(workload)
-
-    # Select name of output file
-    output_file = f"{workload}_d{duration}_c{connections}"
 
     # Run benchmark
     tasks = [None] * connections
@@ -34,15 +32,16 @@ async def bench(workload, duration, connections, host, port, debug=False):
                 debug=debug
             ))
     
-    results = list(merge([task.result()[0] for task in tasks]))
+    results = list(merge(*[task.result()[0] for task in tasks]))
+    m = min(p[0] for p in results)
+    results = [(t-m, l) for (t, l) in results]
     error = any([task.result()[1] for task in tasks])
 
+    # Select name of output file
+    output_file = f"{workload}_{'wasm' if wasm else 'native'}_d{duration}_c{connections}"
+
     # Store results
-    filepath = os.path.join(
-        os.path.realpath(os.path.dirname(os.path.dirname(__file__))), 
-        "results", 
-        f"{output_file}.pkl"
-    )
+    filepath = Path(__file__).parents[1] / "results" /f"{output_file}.pkl"
     file = open(filepath, 'wb')
     pickle.dump(results, file)
     file.close()
@@ -82,7 +81,7 @@ if __name__ == "__main__":
     )
 
     # Workload
-    workloads = [w[0] for w in WORKLOADS]
+    workloads = main.WORKLOADS.keys()
     parser.add_argument(
         '-w', '--workload', 
         type=str, 
@@ -90,6 +89,14 @@ if __name__ == "__main__":
         required=True, 
         help=f"Identifier of the workload to be benchmarked. Must be one of the following [" + ", ".join(workloads) + "]",
         dest="workload"
+    )
+
+    # Wasm
+    parser.add_argument(
+        '-W', '--wasm', 
+        action='store_true',
+        help="Changes the name of the output file according to the implementation of the workload being benchmarked.",
+        dest="wasm"
     )
 
     # Debug
@@ -109,4 +116,4 @@ if __name__ == "__main__":
     port = aux[-1]
 
     # Run benchmark
-    asyncio.run(bench(args.workload, args.duration, args.connections, host, port, args.debug))
+    asyncio.run(bench(args.workload, args.wasm, args.duration, args.connections, host, port, args.debug))

@@ -12,7 +12,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
-#include <signal.h>
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -282,7 +281,7 @@ void neural_network_inference(mnist_dataset_t * dataset, neural_network_t * netw
     //    SERVER    //
     //////////////////
 
-DEBUG = false;
+bool DEBUG = false;
 
 struct args {
     int socket;
@@ -339,6 +338,7 @@ run(void *arg)
     
     if (bytes_read != 0) {
         perror("Read error");
+    }
     else if(DEBUG){
         printf("Client disconnected.\n");
         fflush(stdout);
@@ -373,16 +373,9 @@ init_sockaddr_inet6(struct sockaddr_in6 *addr)
     addr->sin6_addr = in6addr_any;
 }
 
-void handle_sigterm(int signum) {
-    printf("SIGTERM received. Shutting down...\n");
-    fflush(stdout);
-}
-
 int
 main(int argc, char *argv[])
 {
-    signal(SIGTERM, handle_sigterm);
-
     //LOAD DATA AND MODEL
     mnist_dataset_t * test_dataset;
     neural_network_t * network = malloc(sizeof(neural_network_t));
@@ -463,10 +456,6 @@ main(int argc, char *argv[])
             accept(socket_fd, (struct sockaddr *)&addr, (socklen_t *)&addrlen);
         if (client_socket < 0) {
             perror("Accept failed");
-            if (errno == EINTR){
-                printf("SIGTERM received. Closing correctly.\n");
-                fflush(stdout);
-            }
             break;
         }
 

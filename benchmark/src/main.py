@@ -1,40 +1,73 @@
 import argparse
 import asyncio
-from bench import bench
+import bench
+import subprocess
 import time
-from bench import bench
+import uvloop
+from pathlib import Path
 from tqdm import tqdm
 
-WORKLOADS = [('rdb', 'relational_db'), ('nosql', 'no_sql_db'), ('ws', 'web_server'), ('da', 'data_analytics'), ('ml', 'machine_learning')]
+WORKLOADS = {
+    'rdb': 'relational_db', 
+    'nosql': 'no_sql_db', 
+    'ws': 'web_server', 
+    'da': 'data_analytics', 
+    'ml': 'machine_learning'
+}
 COOLDOWN = 5
 DEFAULT_DURATION = 10
 
+asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
 def main(workloads, durations, host, port):
     # Gather workload executables
     native_exes = []
     wasm_exes = []
-    for _ in _:
-        assert filename in [w[1] for w in WORKLOADS] #TODO
+    full_w_names = {WORKLOADS[w] for w in workloads}
+    workloads_dir = Path(__file__).parents[2] / "workloads"
+    for w_dir in workloads_dir.iterdir():
+        if w_dir.is_dir():
+            w_dir_name = w_dir.name
+            if w_dir_name in full_w_names:
+                nexe = w_dir / "build" / w_dir_name
+                wexe = w_dir / "build" / f"{w_dir_name}.wasm"
+                assert nexe.exists()
+                assert wexe.exists()
+                native_exes.append(nexe)
+                wasm_exes.append(wexe)
+                full_w_names.remove(w_dir_name)
+    
+    assert len(full_w_names) > 0, f"Missing folders for the following workloads: [" + ", ".join(full_w_names) + "]" 
 
+    # Run benchmarks for varying loads
     for w, d, nexe, wexe in zip(workloads, durations, native_exes, wasm_exes):
         # Native
         for connections in tqdm(range(100, 1100, 100), desc=w):
-            ### TODO create server
+            # Launch server
+            server_process = subprocess.Popen(nexe)
             time.sleep(1)
-            asyncio.run(bench(w, d, connections, host, port))
+            # Run benchmark
+            error = asyncio.run(bench.bench(w, d, connections, host, port))
             time.sleep(0.1)
-            ### TODO kill server
+            # Terminate server
+            if server_process != None:
+                server_process.terminate()
             time.sleep(COOLDOWN)
+            if error: break
 
         # Wasm
-        for connections in tqdm(range(100, 1100, 100), desc=w+" (wasm)"):
-            ### TODO create server
+        for connections in tqdm(range(100, 1100, 100), desc=WORKLOADS[w]+".wasm"):
+            # Launch server
+            server_process = subprocess.Popen() # TODO
             time.sleep(1)
-            asyncio.run(bench(w, d, connections, host, port))
+            # Run benchmark
+            error = asyncio.run(bench.bench(w, d, connections, host, port))
             time.sleep(0.1)
-            ### TODO kill server
+            # Terminate server
+            if server_process != None:
+                server_process.terminate()
             time.sleep(COOLDOWN)
+            if error: break
 
 
 class DefaultIfEmpty(argparse.Action):
@@ -65,7 +98,7 @@ if __name__ == "__main__":
 
     # Workloads and durations
     workload_group = parser.add_argument_group(title="Workloads", description=f"Select the workloads to benchmark with the following flags. You can select the benchmark duration of each workload by entering an amount in seconds after each flag. The default duration is {DEFAULT_DURATION} seconds.")
-    for w, workload in WORKLOADS:
+    for w, workload in WORKLOADS.items():
         workload_group.add_argument(
             f'-{w}', f'--{workload}',
             action=DefaultIfEmpty,
