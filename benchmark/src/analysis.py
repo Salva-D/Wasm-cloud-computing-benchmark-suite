@@ -1,4 +1,6 @@
+import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import pickle
 from pathlib import Path
@@ -21,9 +23,13 @@ Tables:
  - 
 """
 
+NATIVE_COLOR = 'orange'
+WASM_COLOR = '#654ff0'
+
 
 def gather_results():
     columns = {
+        'type': [],
         'number of connections': [],
         'number of requests': [],
         'throughput (req/sec)': [],
@@ -48,7 +54,8 @@ def gather_results():
                     raw_data = pickle.load(file)
                     file.close()
 
-                    index.append(f"{w_name} ({raw_data['type']})")
+                    index.append(w_name)
+                    columns['type'].append(raw_data['type'])
                     columns['number of connections'].append(raw_data['connections'])
 
                     ls = list(l[1] for l in raw_data['latencies'])
@@ -65,7 +72,7 @@ def gather_results():
     # Create dataframe
     df = pd.DataFrame(data=columns, index=index)
     df.index.name = 'workload'
-    df.sort_values(by=['workload', 'number of connections'], inplace=True)
+    df.sort_values(by=['workload', 'type', 'number of connections'], inplace=True)
 
     # Store processed data
     path = raw_data_dir = results_dir / "processed_data" / "processed_data.pkl"
@@ -73,8 +80,35 @@ def gather_results():
     pickle.dump(df, file)
     file.close()
 
+
 def draw_graphs():
-    ...
+    results_dir = Path(__file__).parents[1] / "results"
+    df = pd.read_pickle(results_dir / "processed_data" / "processed_data.pkl")
+
+    throughput_dir = results_dir / "figures" / "throughput"
+    throughput_dir.mkdir(exist_ok=True)
+    os.chmod(throughput_dir, 0o777)
+    tail_latencies_dir = results_dir / "figures" / "tail_latencies"
+    tail_latencies_dir.mkdir(exist_ok=True)
+    os.chmod(tail_latencies_dir, 0o777)
+
+    # Draw graphs
+    for w_name in df.index.unique():
+        df_w = df.loc[w_name]
+
+        # Throuput
+        plt.plot('number of connections', 'throughput (req/sec)', 's--', data=df_w[df_w['type'] == 'native'], label='Native', color=NATIVE_COLOR)
+        plt.plot('number of connections', 'throughput (req/sec)', 's--', data=df_w[df_w['type'] == 'wasm'], label='Wasm', color=WASM_COLOR)
+        plt.xlabel('number of connections')
+        plt.ylabel('throughput (req/sec)')
+        plt.legend(loc='best')
+        plt.grid()
+        plt.savefig(throughput_dir / f"{'_'.join(w_name.split(' '))}_throughput.png")
+        plt.close()
+
+        # Tail latencies
+
+
 
 if __name__ == "__main__":
     gather_results()
