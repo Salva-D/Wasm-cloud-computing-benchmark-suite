@@ -33,16 +33,21 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
                 debug=debug
             ))
     
-    results = list(merge(*[task.result()[0] for task in tasks]))
-    m = min([p[0] for p in results] + [float('inf')])
-    results = [(t-m, l) for (t, l) in results]
+    latencies = list(merge(*[task.result()[0] for task in tasks]))
+    m = min([p[0] for p in latencies] + [float('inf')])
+    results = {
+        'type': 'wasm' if wasm else 'native',
+        'duration': duration,
+        'connections': connections,
+        'latencies': [(t-m, l) for (t, l) in latencies]
+    }
     error = any([task.result()[1] for task in tasks])
 
     # Select name of output file
     output_file = f"{workload}_{'wasm' if wasm else 'native'}_d{duration}_c{connections}"
 
     # Store results
-    folder = Path(__file__).parents[1] / "results" / main.WORKLOADS[workload]
+    folder = Path(__file__).parents[1] / "results" / "raw_data" /main.WORKLOADS[workload]
     folder.mkdir(exist_ok=True)
     os.chmod(folder, 0o777)
     file = open(folder / f"{output_file}.pkl", 'wb')

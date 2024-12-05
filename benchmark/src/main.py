@@ -16,6 +16,9 @@ WORKLOADS = {
 }
 COOLDOWN = 5
 DEFAULT_DURATION = 10
+START = 100
+STOP = 1000
+STEP = 100
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -46,7 +49,7 @@ def main(workloads, durations, host, port):
     # Run benchmarks for varying loads
     for w, d, nexe, wexe, runtime in zip(workloads, durations, native_exes, wasm_exes, runtimes):
         # Native
-        for connections in tqdm(range(100, 1100, 100), desc=WORKLOADS[w]):
+        for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]):
             # Launch server
             server_process = subprocess.Popen(args=nexe, cwd=nexe.parent)
             time.sleep(1)
@@ -60,7 +63,7 @@ def main(workloads, durations, host, port):
             if error: break
 
         # Wasm
-        for connections in tqdm(range(100, 1100, 100), desc=WORKLOADS[w]+".wasm"):
+        for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]+".wasm"):
             # Launch server
             server_process = subprocess.Popen(
                 args=[runtime, "--dir=.", "--max-threads=1500", "--addr-pool=0.0.0.0/15", wexe], 
