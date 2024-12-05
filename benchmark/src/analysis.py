@@ -44,7 +44,6 @@ def gather_results():
             w_name = ' '.join(w_dir.name.split('_'))
             for datafile in w_dir.iterdir():
                 if datafile.suffix == '.pkl':
-                    print(datafile)
                     file = open(datafile, 'rb')
                     raw_data = pickle.load(file)
                     file.close()
@@ -64,8 +63,6 @@ def gather_results():
                     columns['tail latency 99.9%'].append(np.percentile(ls, 99.9))
 
     # Create dataframe
-    print(columns)
-    print(index)
     df = pd.DataFrame(data=columns, index=index)
     df.index.name = 'workload'
     df.sort_values(by=['workload', 'number of connections'], inplace=True)
