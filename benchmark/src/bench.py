@@ -32,17 +32,20 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
                 warmup_d + duration,
                 debug=debug
             ))
-    
+            await asyncio.sleep(0.0001) # Small delay between client creation to not overload the server
+
+    error = any([task.result()[1] for task in tasks])
+
     latencies = list(merge(*[task.result()[0] for task in tasks]))
     m = min([p[0] for p in latencies] + [float('inf')])
     results = {
         'type': 'wasm' if wasm else 'native',
         'duration': duration,
         'connections': connections,
+        'errors': error,
         'latencies': [(t-m, l) for (t, l) in latencies]
     }
-    error = any([task.result()[1] for task in tasks])
-
+    
     # Select name of output file
     output_file = f"{workload}_{'wasm' if wasm else 'native'}_d{duration}_c{connections}"
 
@@ -84,7 +87,7 @@ if __name__ == "__main__":
         '-D', '--duration', 
         type=int, 
         required=True, 
-        help=f"Duration of the benchmark's measurement phase in seconds. A warmup phase will precede it, lasting {round(WARMUP_PROP * 100, 2)}% of the measurement phase duration.",
+        help=f"Duration of the benchmark's measurement phase in seconds. A warmup phase will precede it, lasting {round(WARMUP_PROP * 100, 2)}%% of the measurement phase duration.",
         dest="duration"
     )
 
@@ -114,7 +117,7 @@ if __name__ == "__main__":
         help="Messages will be printed on screen if this flag is set.",
         dest="debug"
     )
-
+    
     args = parser.parse_args()
     
     aux = args.host.split(':')

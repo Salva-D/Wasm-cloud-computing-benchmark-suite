@@ -1,11 +1,16 @@
 import argparse
 import asyncio
 import bench
+import resource
 import subprocess
 import time
 import uvloop
 from pathlib import Path
 from tqdm import tqdm
+
+
+MAX_FD = 10100 # Maximum number of file descriptors (sockets in this case) that we can open 
+resource.setrlimit(resource.RLIMIT_NOFILE, (MAX_FD, MAX_FD))
 
 WORKLOADS = {
     'rdb': 'relational_db', 
@@ -16,9 +21,9 @@ WORKLOADS = {
 }
 COOLDOWN = 5
 DEFAULT_DURATION = 10
-START = 100
-STOP = 1000
-STEP = 100
+START = 1000
+STOP = 10000 # Included
+STEP = 1000
 
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
 
@@ -51,7 +56,12 @@ def main(workloads, durations, host, port):
         # Native
         for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]):
             # Launch server
-            server_process = subprocess.Popen(args=nexe, cwd=nexe.parent)
+            server_process = subprocess.Popen(
+                args=nexe, 
+                cwd=nexe.parent,
+                close_fds=True, # Ensures no file descriptors are inherited
+                start_new_session=True # Detaches the process completely
+            )
             time.sleep(1)
             # Run benchmark
             error = asyncio.run(bench.bench(w, False, d, connections, host, port))
@@ -61,13 +71,15 @@ def main(workloads, durations, host, port):
                 server_process.terminate()
             time.sleep(COOLDOWN)
             if error: break
-
+        
         # Wasm
         for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]+".wasm"):
             # Launch server
             server_process = subprocess.Popen(
                 args=[runtime, "--dir=.", "--max-threads=1500", "--addr-pool=0.0.0.0/15", wexe], 
-                cwd=nexe.parent
+                cwd=nexe.parent,
+                close_fds=True, # Ensures no file descriptors are inherited
+                start_new_session=True # Detaches the process completely
             )
             time.sleep(1)
             # Run benchmark
@@ -78,7 +90,7 @@ def main(workloads, durations, host, port):
                 server_process.terminate()
             time.sleep(COOLDOWN)
             if error: break
-
+        
 
 class DefaultIfEmpty(argparse.Action):
     def __init__(self, option_strings, dest, default=None, required=False, **kwargs):
