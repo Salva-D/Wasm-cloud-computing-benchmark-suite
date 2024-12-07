@@ -48,7 +48,7 @@ pip install -r requirements.txt
     ```
     sudo python3 bench.py -H 127.0.0.1:1234 -c 5000 -D 30 -w ml
     ```
-### _Running a Wasm server workload example_
+### _Running a Wasm server workload example (not benchmark)_
 ```
 sudo ./iwasm --dir=. --max-threads=30000 --addr-pool=0.0.0.0/15 machine_learning.wasm
 ```
