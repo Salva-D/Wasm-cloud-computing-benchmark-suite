@@ -1,5 +1,5 @@
 # WebAssembly-benchmark-suite
-Benchmark suite for cloud computing workloads in WebAssembly
+Benchmark suite for cloud computing workloads in WebAssembly.
 
 ## Installation and setup
 1. Download wasm micro runtime (WAMR) and place it in the /opt folder:
