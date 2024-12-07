@@ -19,9 +19,9 @@ WORKLOADS = {
 }
 COOLDOWN = 5
 DEFAULT_DURATION = 10
-START = 100
-STOP = 2000 # Included
-STEP = 100
+START = 3000
+STOP = 30000 # Included
+STEP = 3000
 
 # Maximum number of file descriptors (sockets in this case) that we can open 
 MAX_FD = STOP + 100
@@ -57,6 +57,7 @@ def main(workloads, durations, host, port):
 
     # Run benchmarks for varying loads
     for w, d, nexe, wexe, runtime in zip(workloads, durations, native_exes, wasm_exes, runtimes):
+        """
         # Native
         for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]):
             # Launch server
@@ -75,12 +76,12 @@ def main(workloads, durations, host, port):
                 server_process.terminate()
             time.sleep(COOLDOWN)
             if error: break
-        
+        """
         # Wasm
         for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]+".wasm"):
             # Launch server
             server_process = subprocess.Popen(
-                args=[runtime, "--dir=.", "--max-threads=60000", "--addr-pool=0.0.0.0/15", wexe], 
+                args=[runtime, "--dir=.", f"--max-threads={connections + 10}", "--addr-pool=0.0.0.0/15", wexe], 
                 cwd=nexe.parent,
                 close_fds=True, # Ensures no file descriptors are inherited
                 start_new_session=True # Detaches the process completely
