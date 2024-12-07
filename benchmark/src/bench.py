@@ -52,7 +52,7 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
 
     # Balance load
     n_cpu = os.cpu_count()
-    n_processes = min(n_cpu, connections // BATCH_SIZE)
+    n_processes = max(1, min(n_cpu, connections // BATCH_SIZE))
     div_ = connections // n_processes
     rem_ = connections % n_processes
     # connections = rem_ * (div_ + 1) + (n_processes - rem_) * div_ (Most balanced distribution)

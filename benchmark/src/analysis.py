@@ -97,10 +97,10 @@ def draw_graphs():
         # Tail latencies
         lw = 1.2
         ms = 7
-        for p,m in [('95', 's'), ('99', '^'), ('99.9', 'o')]:
+        for p,m in [('95', 's'), ('99', '^')]:#, ('99.9', 'o')]:
             plt.plot('number of connections', f'tail latency {p}% (s)', f'{m}-', data=df_w[df_w['type'] == 'native'], label=f'Native {p}%', color=NATIVE_COLOR, markerfacecolor='none', linewidth=lw, markersize=ms)
 
-        for p,m in [('95', 's'), ('99', '^'), ('99.9', 'o')]:
+        for p,m in [('95', 's'), ('99', '^')]:#, ('99.9', 'o')]:
             plt.plot('number of connections', f'tail latency {p}% (s)', f'{m}-', data=df_w[df_w['type'] == 'wasm'], label=f'Wasm {p}%', color=WASM_COLOR, markerfacecolor='none', linewidth=lw, markersize=ms)
 
         plt.xlabel('Number of Connections')
