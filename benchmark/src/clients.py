@@ -73,8 +73,8 @@ async def client_ml(id, host, port, warmup_end, deadline, debug=False):
                 print(f"Client {id} encountered a recoverable error: {e}\nReconnecting...")
         except Exception as e:
             error_abort = True
-            print(f"Client {id} encountered an unrecoverable error: {e}\nAborting...")
-            break
+            if debug:
+                print(f"Client {id} encountered an unrecoverable error: {e}\nAborting...")
         finally:
             if writer and not writer.is_closing():
                 writer.close()
