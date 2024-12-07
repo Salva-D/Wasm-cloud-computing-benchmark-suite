@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import main
-import math
 import multiprocessing
 import os
 import pickle
@@ -11,7 +10,7 @@ from pathlib import Path
 
 
 WARMUP_PROP = 0.2
-BATCH_SIZE = 500
+BATCH_SIZE = 250
 
 
 async def group(group_id, client_method, warmup_d, duration, connections, host, port, debug, results_q):
@@ -32,7 +31,7 @@ async def group(group_id, client_method, warmup_d, duration, connections, host, 
                     deadline=deadline,
                     debug=debug
                 )))
-            await asyncio.sleep(0.001) # Small delay between batch creation to not overload the server
+            await asyncio.sleep(0.01) # Small delay between batch creation to not overload the server
             remaining -= BATCH_SIZE
 
     

@@ -9,9 +9,7 @@ from pathlib import Path
 from tqdm import tqdm
 
 
-MAX_FD = 30100 # Maximum number of file descriptors (sockets in this case) that we can open 
-resource.setrlimit(resource.RLIMIT_NOFILE, (MAX_FD, MAX_FD))
-
+# Avalailable workloads [CLI flag abreviation -> CLI long form flag/workload folder name]
 WORKLOADS = {
     'rdb': 'relational_db', 
     'nosql': 'no_sql_db', 
@@ -25,7 +23,13 @@ START = 3000
 STOP = 30000 # Included
 STEP = 3000
 
+# Maximum number of file descriptors (sockets in this case) that we can open 
+MAX_FD = STOP + 100
+resource.setrlimit(resource.RLIMIT_NOFILE, (MAX_FD, MAX_FD))
+
+# More efficient event loop for asyncio
 asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
+
 
 def main(workloads, durations, host, port):
     # Gather workload executables
