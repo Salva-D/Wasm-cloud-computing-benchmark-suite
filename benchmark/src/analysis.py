@@ -23,7 +23,8 @@ def gather_results():
         'tail latency 95% (s)': [],
         'tail latency 99% (s)': [],
         'tail latency 99.9% (s)': [],
-        'errors': [],
+        'error_abort': [],
+        'error_reconnect': [],
     }
     index = []#machine learning (native) 
     results_dir = Path(__file__).parents[1] / "results"
@@ -42,7 +43,7 @@ def gather_results():
                     columns['type'].append(raw_data['type'])
                     columns['number of connections'].append(raw_data['connections'])
 
-                    ls = list(l[1] for l in raw_data['latencies'])
+                    ls = list(l[1] * 1e-9 for l in raw_data['latencies']) # Convert from ns to s
                     columns['number of requests'].append(len(ls))
                     columns['throughput (req/s)'].append(len(ls) / raw_data['duration'])
                     columns['latency mean (s)'].append(np.mean(ls))
@@ -53,7 +54,8 @@ def gather_results():
                     columns['tail latency 99% (s)'].append(np.percentile(ls, 99))
                     columns['tail latency 99.9% (s)'].append(np.percentile(ls, 99.9))
 
-                    columns['errors'].append(raw_data['errors'])
+                    columns['error_abort'].append(raw_data['error_abort'])
+                    columns['error_reconnect'].append(raw_data['error_reconnect'])
 
     # Create dataframe
     df = pd.DataFrame(data=columns, index=index)
@@ -93,7 +95,19 @@ def draw_graphs():
         plt.close()
 
         # Tail latencies
+        lw = 1.2
+        ms = 7
+        for p,m in [('95', 's'), ('99', '^'), ('99.9', 'o')]:
+            plt.plot('number of connections', f'tail latency {p}% (s)', f'{m}-', data=df_w[df_w['type'] == 'native'], label=f'Native {p}%', color=NATIVE_COLOR, markerfacecolor='none', linewidth=lw, markersize=ms)
 
+        for p,m in [('95', 's'), ('99', '^'), ('99.9', 'o')]:
+            plt.plot('number of connections', f'tail latency {p}% (s)', f'{m}-', data=df_w[df_w['type'] == 'wasm'], label=f'Wasm {p}%', color=WASM_COLOR, markerfacecolor='none', linewidth=lw, markersize=ms)
+
+        plt.xlabel('Number of Connections')
+        plt.ylabel('Tail Latency (s)')
+        plt.legend(loc='best')
+        plt.savefig(tail_latencies_dir / f"{'_'.join(w_name.split(' '))}_tail_latencies.png")
+        plt.close()
 
 
 if __name__ == "__main__":

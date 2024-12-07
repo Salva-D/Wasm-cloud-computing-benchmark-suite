@@ -1,6 +1,8 @@
 import argparse
 import asyncio
 import main
+import math
+import multiprocessing
 import os
 import pickle
 from clients import get_client_method
@@ -9,7 +11,38 @@ from pathlib import Path
 
 
 WARMUP_PROP = 0.2
+BATCH_SIZE = 500
 
+
+async def group(group_id, client_method, warmup_d, duration, connections, host, port, debug, results_q):
+    # Run benchmark
+    tasks = []
+    remaining = connections
+    async with asyncio.TaskGroup() as tg:
+        start_time = asyncio.get_running_loop().time()
+        warmup_end = start_time + warmup_d
+        deadline = warmup_end + duration
+        while remaining > 0:
+            for j in range(min(BATCH_SIZE, remaining)):
+                tasks.append(tg.create_task(client_method(
+                    id=group_id + connections - remaining + j, 
+                    host=host, 
+                    port=port, 
+                    warmup_end=warmup_end, 
+                    deadline=deadline,
+                    debug=debug
+                )))
+            await asyncio.sleep(0.001) # Small delay between batch creation to not overload the server
+            remaining -= BATCH_SIZE
+
+    
+    latencies = list(merge(*[task.result()[0] for task in tasks]))
+    error_abort = any([task.result()[1] for task in tasks])
+    error_reconnect = any([task.result()[2] for task in tasks])
+    results_q.put((latencies, error_abort, error_reconnect))
+
+def group_runner(group_id, client_method, warmup_d, duration, connections, host, port, debug, results_q):
+    asyncio.run(group(group_id, client_method, warmup_d, duration, connections, host, port, debug, results_q))
 
 async def bench(workload, wasm, duration, connections, host, port, debug=False):
     # Set warmup time
@@ -18,31 +51,53 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
     # Choose adequate client method for benchmark
     client_method = get_client_method(workload)
 
-    # Run benchmark
-    tasks = [None] * connections
-    async with asyncio.TaskGroup() as tg:
-        start_time = asyncio.get_running_loop().time()
-        for i in range(connections):
-            tasks[i] = tg.create_task(client_method(
-                i, 
-                start_time, 
-                host, 
-                port, 
-                warmup_d, 
-                warmup_d + duration,
-                debug=debug
-            ))
-            await asyncio.sleep(0.0001) # Small delay between client creation to not overload the server
+    # Balance load
+    n_cpu = os.cpu_count()
+    n_processes = min(n_cpu, connections // BATCH_SIZE)
+    div_ = connections // n_processes
+    rem_ = connections % n_processes
+    # connections = rem_ * (div_ + 1) + (n_processes - rem_) * div_ (Most balanced distribution)
 
-    error = any([task.result()[1] for task in tasks])
+    processes = []
+    results_q = multiprocessing.Queue()
+    group_id = 0
+    for i in range(n_processes):
+        if i < rem_:
+            group_connections = div_ + 1
+        else:
+            group_connections = div_
 
-    latencies = list(merge(*[task.result()[0] for task in tasks]))
+        process = multiprocessing.Process(
+            target=group_runner, 
+            args=(group_id, client_method, warmup_d, duration, group_connections, host, port, debug, results_q)
+        )
+        processes.append(process)
+        process.start()
+        group_id += group_connections
+
+    # Gather results
+    error_abort = False
+    error_reconnect = False
+    ls = []
+    for _ in processes:
+        r = results_q.get()
+        ls.append(r[0])
+        if r[1]: error_abort = True
+        if r[2]: error_reconnect = True
+
+    # Join processes
+    for process in processes:
+        process.join()
+
+    # Finish processing results
+    latencies = list(merge(*ls))
     m = min([p[0] for p in latencies] + [float('inf')])
     results = {
         'type': 'wasm' if wasm else 'native',
         'duration': duration,
         'connections': connections,
-        'errors': error,
+        'error_abort': error_abort,
+        'error_reconnect': error_reconnect,
         'latencies': [(t-m, l) for (t, l) in latencies]
     }
     
@@ -57,7 +112,7 @@ async def bench(workload, wasm, duration, connections, host, port, debug=False):
     pickle.dump(results, file)
     file.close()
 
-    return error
+    return error_abort
 
 
 if __name__ == "__main__":
