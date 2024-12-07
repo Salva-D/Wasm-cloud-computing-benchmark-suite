@@ -80,7 +80,7 @@ def main(workloads, durations, host, port):
         for connections in tqdm(range(START, STOP+STEP, STEP), desc=WORKLOADS[w]+".wasm"):
             # Launch server
             server_process = subprocess.Popen(
-                args=[runtime, "--dir=.", "--max-threads=900", "--addr-pool=0.0.0.0/15", wexe], 
+                args=[runtime, "--dir=.", "--max-threads=30100", "--addr-pool=0.0.0.0/15", wexe], 
                 cwd=nexe.parent,
                 close_fds=True, # Ensures no file descriptors are inherited
                 start_new_session=True # Detaches the process completely
