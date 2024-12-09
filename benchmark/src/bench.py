@@ -4,6 +4,7 @@ import main
 import multiprocessing
 import os
 import pickle
+import resource
 from clients import get_client_method
 from heapq import merge
 from pathlib import Path
@@ -179,6 +180,10 @@ if __name__ == "__main__":
     for x in aux[:-1]:
         host += x
     port = aux[-1]
+
+    # Maximum number of file descriptors (sockets in this case) that we can open 
+    max_fd = args.connections + 100
+    resource.setrlimit(resource.RLIMIT_NOFILE, (max_fd, max_fd))
 
     # Run benchmark
     asyncio.run(bench(args.workload, args.wasm, args.duration, args.connections, host, port, args.debug))

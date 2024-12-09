@@ -25,6 +25,7 @@ async def client_ml(id, host, port, warmup_end, deadline, debug=False):
     request_logs = []
     error_abort = False
     error_reconnect = False
+    is_reconnecting = False
     reader, writer = None, None
 
     while asyncio.get_running_loop().time() < deadline:
@@ -41,7 +42,8 @@ async def client_ml(id, host, port, warmup_end, deadline, debug=False):
                 message = str(random.randint(0, 9999))
                 
                 # Start measuring
-                request_start_time = time.perf_counter_ns()
+                if not is_reconnecting:
+                    request_start_time = time.perf_counter_ns()
                 writer.write(message.encode())
 
                 # Ensure data is sent (with timeout)
@@ -53,6 +55,7 @@ async def client_ml(id, host, port, warmup_end, deadline, debug=False):
 
                 if asyncio.get_running_loop().time() - request_duration * 1e-9 >= warmup_end:
                     request_logs.append((request_start_time, request_duration))
+                    is_reconnecting = False
                 if debug:
                     print(f"Client {id} received: {response}")
 
@@ -68,11 +71,15 @@ async def client_ml(id, host, port, warmup_end, deadline, debug=False):
                 print(f"(to) Client {id} finished at {asyncio.get_running_loop().time()}")
             break
         except ConnectionError as e:
+            print("AAAAAAAAAAAAAAAAAAAA")
             error_reconnect = True
+            is_reconnecting = True
             if debug:
                 print(f"Client {id} encountered a recoverable error: {e}\nReconnecting...")
         except Exception as e:
             error_abort = True
+            is_reconnecting = True
+            print("AAAAAAAAAAAAAAAAAAAA")
             if debug:
                 print(f"Client {id} encountered an unrecoverable error: {e}\nAborting...")
         finally:
