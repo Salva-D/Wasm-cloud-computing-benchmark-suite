@@ -38,7 +38,6 @@ def gather_results():
                     file = open(datafile, 'rb')
                     raw_data = pickle.load(file)
                     file.close()
-
                     index.append(w_name)
                     columns['type'].append(raw_data['type'])
                     columns['number of connections'].append(raw_data['connections'])
@@ -85,6 +84,7 @@ def draw_graphs():
         df_w = df.loc[w_name]
 
         # Throughput
+        plt.figure(figsize=(9,4))
         plt.plot('number of connections', 'throughput (req/s)', 's-', data=df_w[df_w['type'] == 'native'], label='Native', color=NATIVE_COLOR)
         plt.plot('number of connections', 'throughput (req/s)', 's-', data=df_w[df_w['type'] == 'wasm'], label='Wasm', color=WASM_COLOR)
         plt.xlabel('Number of Connections')
@@ -97,6 +97,7 @@ def draw_graphs():
         # Tail latencies
         lw = 1.2
         ms = 7
+        plt.figure(figsize=(9,4))
         for p,m in [('95', 's'), ('99', '^')]:#, ('99.9', 'o')]:
             plt.plot('number of connections', f'tail latency {p}% (s)', f'{m}-', data=df_w[df_w['type'] == 'native'], label=f'Native {p}%', color=NATIVE_COLOR, markerfacecolor='none', linewidth=lw, markersize=ms)
 

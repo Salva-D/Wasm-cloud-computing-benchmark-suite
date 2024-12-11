@@ -20,7 +20,7 @@ WORKLOADS = {
 COOLDOWN = 5
 DEFAULT_DURATION = 60
 START = 100
-STOP = 1600 # Included
+STOP = 1900 # Included
 STEP = 150
 
 # Maximum number of file descriptors (sockets in this case) that we can open 

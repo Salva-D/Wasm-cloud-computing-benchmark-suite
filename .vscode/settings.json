@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "socket_utils.h": "c",
+        "dbapi.h": "c",
+        "indexapi.h": "c",
+        "string.h": "c",
+        "socket.h": "c",
+        "stat.h": "c",
+        "assert.h": "c",
+        "errno.h": "c",
+        "inet.h": "c",
+        "in.h": "c",
+        "pthread.h": "c",
+        "stdbool.h": "c"
+    }
+}
