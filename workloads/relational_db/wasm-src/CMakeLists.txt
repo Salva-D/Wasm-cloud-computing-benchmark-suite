@@ -101,4 +101,4 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
   endif()
 endfunction()
 
-compile_with_clang(rldb.c)
+compile_with_clang(relational_db.c)

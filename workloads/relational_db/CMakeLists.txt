@@ -112,11 +112,11 @@ ExternalProject_Add(wasm-app
                       ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src
   BUILD_COMMAND     ${CMAKE_COMMAND} --build .
   INSTALL_COMMAND   ${CMAKE_COMMAND} -E copy
-                      rldb.wasm ${CMAKE_BINARY_DIR}
+                      relational_db.wasm ${CMAKE_BINARY_DIR}
 )
 
-add_executable(rldb ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/rldb.c)
-target_link_libraries(rldb pthread m sqlite3)
+add_executable(relational_db ${CMAKE_CURRENT_SOURCE_DIR}/wasm-src/relational_db.c)
+target_link_libraries(relational_db pthread m sqlite3)
 
 
 ############################################
