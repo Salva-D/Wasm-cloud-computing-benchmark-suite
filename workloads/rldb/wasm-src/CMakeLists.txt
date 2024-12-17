@@ -72,7 +72,7 @@ function(COMPILE_WITH_CLANG SOURCE_FILE)
   set_target_properties(${MAIN_TARGET_NAME} PROPERTIES OUTPUT_NAME ${WASM_MODULE})
   target_include_directories(${MAIN_TARGET_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/inc)
   target_compile_options(${MAIN_TARGET_NAME} INTERFACE -pthread)
-  target_link_libraries(${MAIN_TARGET_NAME} socket_wasi_ext)
+  target_link_libraries(${MAIN_TARGET_NAME} socket_wasi_ext sqlite3)
   target_link_options(${MAIN_TARGET_NAME} PRIVATE
     LINKER:--export=__heap_base
     LINKER:--export=__data_end
