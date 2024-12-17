@@ -71,17 +71,15 @@ async def client_ml(id, host, port, warmup_end, deadline, debug=False):
                 print(f"(to) Client {id} finished at {asyncio.get_running_loop().time()}")
             break
         except ConnectionError as e:
-            print("AAAAAAAAAAAAAAAAAAAA")
             error_reconnect = True
             is_reconnecting = True
             if debug:
-                print(f"Client {id} encountered a recoverable error: {e}\nReconnecting...")
+                print(f"Client {id} encountered a connection error: {e}\nReconnecting...")
         except Exception as e:
             error_abort = True
             is_reconnecting = True
-            print("AAAAAAAAAAAAAAAAAAAA")
             if debug:
-                print(f"Client {id} encountered an unrecoverable error: {e}\nAborting...")
+                print(f"Client {id} encountered an error: {e}\nAborting...")
         finally:
             if writer and not writer.is_closing():
                 writer.close()
