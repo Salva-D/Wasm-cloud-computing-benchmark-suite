@@ -4,7 +4,7 @@
  */
 #include "socket_utils.h"
 
-#include <sqlite3.h>
+#include "sqlite3.h"
 
 #include <math.h>
 
