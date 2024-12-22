@@ -1,4 +1,4 @@
-# WebAssembly-benchmark-suite
+# Wasm-cloud-computing-benchmark-suite
 Benchmark suite for cloud computing workloads in WebAssembly.
 
 ## Installation and setup
